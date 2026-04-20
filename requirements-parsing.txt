@@ -1,0 +1,7 @@
+# ML & Layout Extraction Stack
+# Pin modern MinerU to keep torch compatibility predictable and avoid detectron2 source-build drift.
+magic-pdf[full]==1.3.12
+huggingface-hub>=0.30,<1
+tqdm>=4.66,<5
+pydantic>=2,<3
+python-dotenv>=1,<2

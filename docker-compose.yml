@@ -1,0 +1,40 @@
+version: "3.9"
+
+services:
+  # Stage 1: PDF Layout Parsing (GPU Required)
+  layout-parser:
+    build:
+      context: .
+      dockerfile: Dockerfile.parsing
+    container_name: pdf-layout-parser
+    volumes:
+      - ./models:/app/models
+      - ./data:/app/data:ro
+      - ./output:/app/output
+    environment:
+      - PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+    env_file:
+      - .env
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+  # Stage 2: Intent Structuring (CPU Only)
+  intent-structurer:
+    build:
+      context: .
+      dockerfile: Dockerfile.structuring
+    container_name: intent-structuring-pipeline
+    depends_on:
+      layout-parser:
+        condition: service_completed_successfully
+    volumes:
+      - ./output:/app/output
+    env_file:
+      - .env
+    stdin_open: true
+    tty: true

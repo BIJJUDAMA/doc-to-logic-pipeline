@@ -1,0 +1,11 @@
+.git
+.env
+models/
+output/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.db
+.DS_Store

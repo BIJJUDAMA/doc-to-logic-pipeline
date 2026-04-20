@@ -1,0 +1,68 @@
+FROM nvidia/cuda:12.6.3-runtime-ubuntu24.04
+
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN find /etc/apt/ -type f -name "*.list" -o -name "*.sources" | xargs sed -i 's|http://archive.ubuntu.com|http://mirror.math.princeton.edu/pub/ubuntu|g' && \
+    find /etc/apt/ -type f -name "*.list" -o -name "*.sources" | xargs sed -i 's|http://security.ubuntu.com|http://mirror.math.princeton.edu/pub/ubuntu|g'
+
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+    python3 \
+    python3-pip \
+    python3-venv \
+    python3-dev \
+    git \
+    build-essential \
+    libgl1 \
+    libglib2.0-0 \
+    poppler-utils \
+    curl \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN ln -sf /usr/bin/python3 /usr/bin/python
+
+WORKDIR /app
+
+RUN python3 -m venv /opt/venv
+ENV PATH="/opt/venv/bin:${PATH}"
+
+RUN groupadd -r appuser && useradd -r -g appuser appuser && \
+    mkdir -p /home/appuser && chown appuser:appuser /home/appuser
+
+COPY requirements-parsing.txt .
+RUN --mount=type=cache,target=/root/.cache/pip \
+    python -m pip install --upgrade pip setuptools wheel && \
+    python -m pip install torch==2.6.0 torchvision==0.21.0 --index-url https://download.pytorch.org/whl/cu126 && \
+    python -m pip install --no-build-isolation -r requirements-parsing.txt
+
+RUN mkdir -p /opt/venv/lib/python3.12/site-packages/rapid_table/models && \
+    chown -R appuser:appuser /opt/venv/lib/python3.12/site-packages/rapid_table
+
+
+RUN echo '{\
+  "models-dir": "/app/models/models",\
+  "device-mode": "cuda",\
+  "layout-config": { "model": "doclayout_yolo" },\
+  "formula-config": { "mfd_model": "yolo_v8_mfd", "mfr_model": "unimernet_small", "enable": false },\
+  "table-config": { "model": "rapid_table", "enable": true },\
+  "config_version": "1.0.0"\
+}' > /home/appuser/magic-pdf.json && \
+    cp /home/appuser/magic-pdf.json /app/magic-pdf.json && \
+    chown appuser:appuser /home/appuser/magic-pdf.json /app/magic-pdf.json
+
+COPY --chown=appuser:appuser . .
+
+ENV MAGIC_PDF_CONFIG_PATH=/home/appuser/magic-pdf.json
+ENV RAPID_TABLE_MODELS_DIR=/app/models/rapid_table
+ENV YOLO_CONFIG_DIR=/tmp/Ultralytics
+USER appuser
+
+RUN chmod +x scripts/setup_and_run.sh
+RUN sed -i 's/\r$//' scripts/setup_and_run.sh
+ENTRYPOINT ["/app/scripts/setup_and_run.sh"]
+CMD ["python", "-m", "src.parsing.main"]
