@@ -1,0 +1,13 @@
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.db
+.DS_Store
+.env
+models/
+output/
+data/
+.env.*
