@@ -6,9 +6,10 @@ How it works: Loads a prompt template, sets up clients based on API keys, and re
 import os
 import json
 import time
+import re
 import google.generativeai as genai
 import openai
-from src.structuring.config import GEMINI_API_KEY, MODEL_NAME, OPENAI_API_KEY, OPENAI_MODEL, MAX_TOKENS
+from src.structuring.config import GEMINI_API_KEY, MODEL_NAME, OPENAI_API_KEY, OPENAI_MODEL, MAX_TOKENS, ENABLE_REASONING
 
 
 # Set up the LLM client (OpenAI or Gemini) based on environment availability
@@ -39,13 +40,15 @@ def extract_intents(text):
     # Invokes the configured LLM API to extract intents from the input text
     try:
         if OPENAI_API_KEY:
+            # We use extra_body to pass OpenRouter-specific parameters like 'reasoning'
             response = client.chat.completions.create(
                 model=MODEL_NAME,
                 messages=[
                     {"role": "system", "content": PROMPT},
                     {"role": "user", "content": text}
                 ],
-                max_tokens=MAX_TOKENS
+                max_tokens=MAX_TOKENS,
+                extra_body={"reasoning": {"enabled": True}} if ENABLE_REASONING else {}
             )
             resp_text = response.choices[0].message.content
 
@@ -61,8 +64,10 @@ def extract_intents(text):
         
         print(f"--- LLM Response ---:\n{resp_text}\n--------------------")
         
+        # 1. Safely strip out reasoning <think>...</think> tags if the model returned them inline
+        resp_text = re.sub(r'<think>.*?</think>', '', resp_text, flags=re.DOTALL).strip()
 
-        # Clean the Markdown output for JSON parsing
+        # 2. Clean the Markdown output for JSON parsing
         if resp_text.startswith("```json"):
             resp_text = resp_text.split("```json")[1].split("```")[0].strip()
         elif resp_text.startswith("```"):

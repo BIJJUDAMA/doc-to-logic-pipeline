@@ -16,6 +16,7 @@ MODEL_NAME = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 OPENAI_MODEL = os.getenv("OPENAI_MODEL")
 MAX_TOKENS = int(os.getenv("MAX_TOKENS", "4000"))
+ENABLE_REASONING = os.getenv("ENABLE_REASONING", "false").lower() == "true"
 
 
 # Data processing paths

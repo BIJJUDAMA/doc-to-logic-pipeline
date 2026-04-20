@@ -31,26 +31,6 @@ The second stage uses Large Language Models to interpret the structured text seg
 ...
 All configuration is handled via environment variables in the `.env` file.
 
-```env
-# LLM Options
-
-# Option A: Google Gemini API (Native)
-GEMINI_API_KEY=your_key_here
-GEMINI_MODEL=gemini-2.5-flash
-
-# Option B: OpenRouter / OpenAI Compatible (Prioritized if set)
-OPENAI_API_KEY=your_openrouter_key
-OPENAI_MODEL=google/gemma-2-9b-it:free
-
-# Parsing Configuration 
-PARSING_WORKERS=1
-
-# Structuring Configuration
-MAX_TOKENS=4000
-
-# Optional: Hugging Face Token
-HF_TOKEN=your_hf_token
-```
 
 ## Opinionated Directory Structure
 
