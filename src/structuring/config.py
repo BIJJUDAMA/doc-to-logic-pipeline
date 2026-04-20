@@ -17,6 +17,7 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 OPENAI_MODEL = os.getenv("OPENAI_MODEL")
 MAX_TOKENS = int(os.getenv("MAX_TOKENS", "4000"))
 ENABLE_REASONING = os.getenv("ENABLE_REASONING", "false").lower() == "true"
+INTENT_EXTRACTION_MODE = os.getenv("INTENT_EXTRACTION_MODE", "true").lower() == "true"
 
 
 # Data processing paths

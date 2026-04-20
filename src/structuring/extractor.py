@@ -9,7 +9,7 @@ import time
 import re
 import google.generativeai as genai
 import openai
-from src.structuring.config import GEMINI_API_KEY, MODEL_NAME, OPENAI_API_KEY, OPENAI_MODEL, MAX_TOKENS, ENABLE_REASONING
+from src.structuring.config import GEMINI_API_KEY, MODEL_NAME, OPENAI_API_KEY, OPENAI_MODEL, MAX_TOKENS, ENABLE_REASONING, INTENT_EXTRACTION_MODE
 
 
 # Set up the LLM client (OpenAI or Gemini) based on environment availability
@@ -29,7 +29,10 @@ def load_prompt():
     try:
         with open(prompt_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
-            return data.get("structuring", {}).get("prompt", "")
+            if INTENT_EXTRACTION_MODE:
+                return data.get("intent_extraction", {}).get("prompt", "")
+            else:
+                return data.get("zero_schema", {}).get("prompt", "")
     except Exception as e:
         print(f"Error loading prompt: {e}")
         return ""
@@ -67,12 +70,16 @@ def extract_intents(text):
         # 1. Safely strip out reasoning <think>...</think> tags if the model returned them inline
         resp_text = re.sub(r'<think>.*?</think>', '', resp_text, flags=re.DOTALL).strip()
 
-        # 2. Clean the Markdown output for JSON parsing
-        if resp_text.startswith("```json"):
-            resp_text = resp_text.split("```json")[1].split("```")[0].strip()
-        elif resp_text.startswith("```"):
-            resp_text = resp_text.split("```")[1].split("```")[0].strip()
-            
+        # 2. Strip markdown code fences (handles ```json, ``` or text before/after the JSON block)
+        fence_match = re.search(r'```(?:json)?\s*([\s\S]*?)```', resp_text)
+        if fence_match:
+            resp_text = fence_match.group(1).strip()
+        else:
+            # 3. Fallback: find the first JSON object or array in the raw response
+            json_match = re.search(r'(\{[\s\S]*\}|\[[\s\S]*\])', resp_text)
+            if json_match:
+                resp_text = json_match.group(1).strip()
+
         return json.loads(resp_text)
     except Exception as e:
         print(f"Error during intent extraction: {e}")
@@ -80,7 +87,8 @@ def extract_intents(text):
         # Fallback object creation on failed extraction
         raw_resp = ""
         try:
-            raw_resp = response.text
+            raw_resp = resp_text if 'resp_text' in dir() else response.text
         except:
             raw_resp = str(e)
+        print(f"Parse failed. Raw response was:\n{raw_resp}")
         return {"intent": "parse_error", "raw": raw_resp}
