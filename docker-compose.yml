@@ -33,6 +33,7 @@ services:
       layout-parser:
         condition: service_completed_successfully
     volumes:
+      - ./src:/app/src
       - ./output:/app/output
     env_file:
       - .env
